@@ -5,12 +5,18 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# 两次推送几乎同时到达时，两个 job 会在同一目录上并发 git pull + up -d --build
+concurrency:
+  group: deploy-company220629
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+        # 固定到 commit，不用可移动的 v1 tag：这个 action 在生产上持有 SSH 私钥
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -19,8 +25,14 @@ jobs:
             set -e
             cd /opt/company220629
             for var in APP_KEY DB_PASSWORD; do
-              if ! grep -qE "^${var}=.+" .env 2>/dev/null; then
-                echo "ERROR: /opt/company220629/.env 缺少非空 ${var}，拒绝部署" >&2
+              # APP_KEY 必须是 Laravel 认的格式：base64: + 32 字节的 base64（44 字符，以 = 结尾）
+              if [ "$var" = APP_KEY ]; then
+                pattern='^APP_KEY=base64:[A-Za-z0-9+/]{43}=$'
+              else
+                pattern='^DB_PASSWORD=.+'
+              fi
+              if ! grep -qE "$pattern" .env 2>/dev/null; then
+                echo "ERROR: /opt/company220629/.env ${var} 缺失或格式非法，拒绝部署" >&2
                 exit 1
               fi
             done

@@ -195,14 +195,14 @@ TTL 分两档：
 | 1 | §生产环境差异：「`ports: []`（完全不暴露）」 | `ports: !reset []` | compose 对 `ports` 是按**列表合并**的，空列表不移除任何端口，端口会原样保留；只有 `!reset`（Compose ≥ 2.24.4）才真正清除。已在真实 v2.24.6 二进制上实测确认。正文该处已就地更正。 |
 | 2 | §验证码改造：「Redis key 格式 `captcha:{token}`」 | 线上键为 `company_captcha:{token}` | Laravel 会把 `REDIS_PREFIX=company_` 前置到该连接的**所有**键（`config/database.php` 的 redis 连接 → `RedisManager` → `PhpRedisConnector` 的 `OPT_PREFIX`）。不带前缀的键根本不存在，`EXISTS` 返回 0 会被误读成「已被一次性消费」。 |
 | 3 | §验证码改造：`Captcha.php` 只规定 `issue/verify/render` 三个方法 | 另加：token 用 `bin2hex(random_bytes(16))`、验证码字符用 `random_int()`、`verify()` 先 `del` 再判空、绘图的 `ob_get_clean()` 置于 `finally` | 生成源由非 CSPRNG（`md5(uniqid(mt_rand()))`）换成 CSPRNG；「先删后判」才是真正的一次性语义（先判后删会让空输入路径留下活键）；`finally` 保证异常路径不泄漏输出缓冲。 |
-| 4 | 正文未提及限流 | `/admin/captcha/refresh` 与 `/verifyCode/refresh` 加 `throttle:30,1`；`TrustProxies::$proxies = '*'` | token 签发端点无限流时，单个 IP 即可无限量往 Redis 写键；前台 TTL 是 300s，窗口内积累的活跃键数量只受请求速率限制，没有上限。两项必须同批落地：不信任代理时 `$request->ip()` 对所有访客都返回同一个 docker 网关地址，per-route 限流会退化成**全局单桶**，比不限流更糟。两个验证码**索引**路由刻意不限流（渲染图片本就需要刷新）。 |
+| 4 | 正文未提及限流 | `/admin/captcha/refresh` 与 `/verifyCode/refresh` 加 `throttle:30,1`；`TrustProxies::$proxies = '*'` | token 签发端点无限流时，单个 IP 即可无限量往 Redis 写键；前台 TTL 是 300s，窗口内积累的活跃键数量只受请求速率限制，没有上限。两项必须同批落地：不信任代理时 `$request->ip()` 对所有访客都返回同一个 docker 网关地址，per-route 限流会退化成**全局单桶**，比不限流更糟。两个验证码**索引**路由刻意不限流（渲染图片本就需要刷新）。**（最终评审补正）**原只对两个 `refresh` 端点限流，但签发 token 的还有两条页面渲染路由，论据所指的洞并未关死；已给 `/message.html` 与 `/admin/login/index` 补 `throttle:60,1`。 |
 | 5 | §生产环境差异未列日志项 | 加 `LOG_LEVEL=error`、`LOG_CHANNEL=daily` | 生产沿用 `stack`（单文件）会让 `laravel.log` 无界增长。 |
-| 6 | §部署流程未提部署前校验 | workflow 在 `git pull` 前校验 `.env` 中 `APP_KEY`、`DB_PASSWORD` 非空，缺失即中止部署 | 缺 `DB_PASSWORD` 时 compose 只打印一行警告，并把 `MYSQL_ROOT_PASSWORD` 合并成空串（v2.24.6 实测），会静默起一个无口令的数据库。 |
+| 6 | §部署流程未提部署前校验 | workflow 在 `git pull` 前校验 `.env` 中 `APP_KEY`、`DB_PASSWORD` 非空，缺失即中止部署 | 缺 `DB_PASSWORD` 时 compose 打印一行警告并把 `MYSQL_ROOT_PASSWORD` 代入空串；`mysql:8.0` 入口脚本对「已设置但为空」与「未设置」同样按未指定处理，直接报 `Database is uninitialized and password option is not specified` 退出 1，mysql 反复重启、project 因 `service_healthy` 永远起不来——是**整站起不来**，不是静默的无口令库（实测，见 `docs/server-setup-guide.md`）。原写「会静默起一个无口令的数据库」是错的。 |
 | 7 | §mysql 容器「健康检查: `mysqladmin ping`」 | `mysqladmin ping -h 127.0.0.1 -u root -p"$MYSQL_ROOT_PASSWORD"` | 镜像内的 `mysqladmin` 默认走 unix socket，探针无法反映 TCP 服务是否可用；无凭据的 TCP 探针在部分配置下会被服务器拒绝。 |
 | 8 | §目录结构只列 `.dockerignore` 需排除 `vendor` | 额外排除 `.user.ini` | 仓库里的 `.user.ini` 把 `open_basedir` 指向容器内并不存在的路径，打进镜像会限制 PHP 的文件访问范围。 |
 | 9 | 正文未提及验证码刷新的失败路径 | 两个 blade 的 `refreshCaptcha()` 补 `error` 回调 | 第 4 条的限流是本项目新增的，触发 429 时原 `$.get` 无失败回调，刷新会静默失效——即「点验证码没反应」。这条回归由限流引入，必须与它同批修复。 |
 | 10 | 正文未规定宿主 Nginx 的转发头 | 指南第六节改为 `proxy_set_header X-Forwarded-For $remote_addr;`（覆写） | 容器内 `TrustProxies::$proxies = '*'` 信任全部代理，Laravel 取转发链最左地址；用 `$proxy_add_x_forwarded_for` 追加时客户端自带的值会被采信，`$request->ip()` 由访客决定，第 4 条的按 IP 限流随之失效。单层代理下覆写才正确；将来加 CDN 需改用 `set_real_ip_from`。 |
-| 11 | §部署流程：「`public/upload/` 不在 git 中，首次部署需从本地 rsync 到服务器」 | 本地源路径为 `code/project/public/upload/` | Task 1 把应用整体 `git mv` 进 `code/project/`，仓库根目录下没有 `public/`（`ls public` → No such file or directory）。原样执行会直接报路径不存在，或在某个残留目录上同步成功却同步了空内容，站点图片全 404。**本 spec 第 167 行与 plan 第 1674/1678 行仍保留迁移前的不带 `code/project` 的旧写法**，属历史文本，不改写；执行时以本节与本条为准。 |
+| 11 | §部署流程：「`public/upload/` 不在 git 中，首次部署需从本地 rsync 到服务器」 | 本地源路径为 `code/project/public/upload/` | Task 1 把应用整体 `git mv` 进 `code/project/`，仓库根目录下没有 `public/`（`ls public` → No such file or directory）。原样执行会直接报路径不存在，或在某个残留目录上同步成功却同步了空内容，站点图片全 404。**本 spec 第 167 行与 plan 第 1681/1685 行仍保留迁移前的不带 `code/project` 的旧写法**，属历史文本，不改写；执行时以本节与本条为准。 |
 
 ### 遗留观察（非本计划引入，未修改）
 
@@ -213,21 +213,56 @@ TTL 分两档：
 
 ### 未随修订更新的历史文本（spec 正文与 plan 正文）
 
-本节是**穷尽清单**：以下行号里的正文未随修订更新，属历史文本，不改写。凡与本节、修订表或
-plan 头部指针冲突的，一律以修订侧为准。清单按事实分组，行号按本次盘点时的实际位置。
+本节声明一条**总规则**，随后给出若干高危实例的索引。
 
-- **入口脚本 `-D`**：`spec:55`、`plan:429`（可直接复制的 `php-fpm -D` 代码块，照抄会复现 FPM
-  日志丢失）、`plan:1965` —— 一律以 `tasks/todo.md:34` 与 `code/project/docker-entrypoint.sh` 为准。
-- **Redis 键前缀**：`plan:25`（Global Constraints）、`plan:1744`、`plan:1859` —— 以修订表第 2 条为准
+**总规则：本 spec 与 plan 正文中所有围栏代码块，以及正文里的具体命令与参数，都是修订前的
+版本，一律不得照抄。** 实现以仓库中的实际文件为准：`docker-compose.yml`、
+`docker-compose.prod.yml`、`code/project/` 下的 `Dockerfile` / `nginx.conf` / `php.ini` /
+`docker-entrypoint.sh` / `php-fpm.d/www.conf`、`app/Common/Captcha.php`、两个验证码 blade、
+`routes/{web,home}.php`、`docs/server-setup-guide.md`、`CLAUDE.md`。
+
+为什么按类别声明而不是逐行穷尽：本清单的前两版都是逐行列举，两轮之后仍各有遗漏——plan 的
+代码块与它的正文是两份彼此独立的错误副本，逐行列举追不上。**下面的行号是高危实例索引，
+不是穷尽保证**；与本节、修订表或 plan 头部指针冲突时，一律以修订侧与仓库实际文件为准。
+
+- **宿主 Nginx 转发头**（照抄会直接重新打开客户端可控 `$request->ip()`，使第 4 条的按 IP
+  限流失效，即修订表第 10 条要修的那个洞）：`plan:1704` —— 该行是
+  `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`，实际实现为
+  `docs/server-setup-guide.md` 里的 `$remote_addr` 覆写。
+- **验证码生成与一次性语义**（Task 11 的整段代码块 `plan:784-963` 全部未随修订更新）：
+  `plan:830`（`md5(uniqid((string) mt_rand(), true))` 非 CSPRNG，实际为
+  `bin2hex(random_bytes(16))`）、`plan:847-849`（先判空再删，空输入会留下活键，实际为先删后判）、
+  `plan:891-899` / `plan:907-908` / `plan:937`（`rand()`，实际为 `random_int()`）、
+  `plan:916-919`（`ob_start()`/`imagepng()`/`ob_get_clean()` 无 `try/finally`）——
+  以上均为修订表第 3 条覆盖，以 `code/project/app/Common/Captcha.php` 为准。
+- **生产覆盖层代码块内容不全**：`plan:639-653` 除了那两处 `ports: []`，还缺
+  `MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}` 与 `LOG_LEVEL=error` / `LOG_CHANNEL=daily`。
+  照抄会得到一个 root 口令仍是基础文件字面量、而应用按 `.env` 认证的 mysql——
+  永久 `1045` 且 `docker-compose ps` 显示 healthy，正是 `docker-compose.prod.yml` 注释警告的
+  那个故障。以 `docker-compose.prod.yml` 为准。
+- **Redis 键名**：`plan:2049`、`plan:2051`、`plan:2072`、`plan:2083` 用 `captcha:$TOKEN`
+  不带 `company_` 前缀；`plan:2072` 的「预期 0（一次性已删）」在不存在的键上**恒真**，
+  正是修订表第 2 条描述的误判。以修订表第 2 条与 `docs/server-setup-guide.md` 为准。
+- **mysql 健康检查**：`spec:66`、`plan:577`（`mysqladmin ping`，且缺 `retries: 10` /
+  `start_period: 60s`）—— 以修订表第 7 条与 `docker-compose.yml` 为准。
+- **PHP 错误日志路径**：`plan:308`（`error_log = /var/log/php_errors.log`，照抄会让
+  `docker logs` 里看不到任何 PHP 错误，与入口脚本 `-D` 那条同类）—— 以
+  `code/project/php.ini` 的 `/proc/self/fd/2` 为准。
+- **Task 17 验证命令**：`plan:2018`、`plan:2023`（`opcache` 的 grep 与「预期 8 个扩展
+  全部列出」永远不可能通过，`php -m` 输出的是 `Zend OPcache`）、`plan:2070-2071`
+  （`create_time` 列不存在，dump 里是 `created_at`）—— 二者均已记在 `tasks/todo.md` 的偏差表。
+- **入口脚本 `-D`**：`spec:55`、`plan:435`（可直接复制的 `php-fpm -D` 代码块，照抄会复现 FPM
+  日志丢失）、`plan:1971` —— 一律以 `tasks/todo.md:34` 与 `code/project/docker-entrypoint.sh` 为准。
+- **Redis 键前缀**：`plan:31`（Global Constraints）、`plan:1750`、`plan:1865` —— 以修订表第 2 条为准
   （`spec:135` 已由第 2 条覆盖，一并注明）。
-- **「volume 挂载」措辞**：`spec:31`、`plan:1826`（MySQL 数据目录那处，与已更正的 `CLAUDE.md:30`
-  同源）、`spec:56`、`plan:489` —— 实为宿主目录 bind mount（`docker-compose.yml:34/35/54` 三处都是
+- **「volume 挂载」措辞**：`spec:31`、`plan:1832`（MySQL 数据目录那处，与已更正的 `CLAUDE.md:30`
+  同源）、`spec:56`、`plan:495` —— 实为宿主目录 bind mount（`docker-compose.yml:34/35/54` 三处都是
   `./宿主目录:容器路径`），以 `docker-compose.yml` 与修订表第 11 条为准。
-- **MySQL 诊断命令的口令写法**：`plan:1743`（`mysql -uroot -p` 交互式提示，非交互环境直接失败）
-  —— 以 `docs/server-setup-guide.md:261` 的 `sh -c '… -p"$MYSQL_ROOT_PASSWORD" …'` 为准。
-- **验证码刷新的失败路径（429）**：`plan:1205`、`plan:1432`（两个可直接复制的 `refreshCaptcha()`
+- **MySQL 诊断命令的口令写法**：`plan:1749`（`mysql -uroot -p` 交互式提示，非交互环境直接失败）
+  —— 以 `docs/server-setup-guide.md:297` 的 `sh -c '… -p"$MYSQL_ROOT_PASSWORD" …'` 为准。
+- **验证码刷新的失败路径（429）**：`plan:1211`、`plan:1438`（两个可直接复制的 `refreshCaptcha()`
   代码块，无 `.fail`，照抄会复现「点验证码没反应」）—— 以修订表第 9 条与两个 blade 为准。
-- **`!reset` / 生产覆盖层清端口**：`plan:630-631`（注释里的错误理由）、`plan:643`、`plan:646`
+- **`!reset` / 生产覆盖层清端口**：`plan:636-637`（注释里的错误理由）、`plan:649`、`plan:652`
   （`docker-compose.prod.yml` 代码块里的 `ports: []`，照抄**不会**移除端口，会复现第 1 条要修的
   那个暴露问题）—— 以修订表第 1 条与 `docker-compose.prod.yml` 为准。
-- **上传路径**：`spec:167`、`plan:1675`、`plan:1679`、`plan:1905` —— 已由第 11 条覆盖，此处只做索引。
+- **上传路径**：`spec:167`、`plan:1681`、`plan:1685`、`plan:1911` —— 已由第 11 条覆盖，此处只做索引。

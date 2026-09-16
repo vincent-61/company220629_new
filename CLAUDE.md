@@ -106,6 +106,6 @@ docker compose exec redis redis-cli
 ## 注意事项
 
 - MySQL 初始化 SQL 只在 `code/mysql/` 为空时执行一次；要重跑必须先清空该目录
-- `public/upload` 不在 git 中，新环境部署后需 rsync 上传
+- `code/project/public/upload` 不在 git 中，新环境部署后需 rsync 上传（本地约 100MB / 250 个文件）
 - 服务器是 CentOS 7.6，用 standalone `docker-compose`，不是 `docker compose` 插件
 - 改端口要同时改 `docker-compose.yml` 和 `docs/server-setup-guide.md`

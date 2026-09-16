@@ -202,6 +202,7 @@ TTL 分两档：
 | 8 | §目录结构只列 `.dockerignore` 需排除 `vendor` | 额外排除 `.user.ini` | 仓库里的 `.user.ini` 把 `open_basedir` 指向容器内并不存在的路径，打进镜像会限制 PHP 的文件访问范围。 |
 | 9 | 正文未提及验证码刷新的失败路径 | 两个 blade 的 `refreshCaptcha()` 补 `error` 回调 | 第 4 条的限流是本项目新增的，触发 429 时原 `$.get` 无失败回调，刷新会静默失效——即「点验证码没反应」。这条回归由限流引入，必须与它同批修复。 |
 | 10 | 正文未规定宿主 Nginx 的转发头 | 指南第六节改为 `proxy_set_header X-Forwarded-For $remote_addr;`（覆写） | 容器内 `TrustProxies::$proxies = '*'` 信任全部代理，Laravel 取转发链最左地址；用 `$proxy_add_x_forwarded_for` 追加时客户端自带的值会被采信，`$request->ip()` 由访客决定，第 4 条的按 IP 限流随之失效。单层代理下覆写才正确；将来加 CDN 需改用 `set_real_ip_from`。 |
+| 11 | §部署流程：「`public/upload/` 不在 git 中，首次部署需从本地 rsync 到服务器」 | 本地源路径为 `code/project/public/upload/` | Task 1 把应用整体 `git mv` 进 `code/project/`，仓库根目录下没有 `public/`（`ls public` → No such file or directory）。原样执行会直接报路径不存在，或在某个残留目录上同步成功却同步了空内容，站点图片全 404。**本 spec 第 167 行与 plan 第 1674/1678 行仍保留迁移前的不带 `code/project` 的旧写法**，属历史文本，不改写；执行时以本节与本条为准。 |
 
 ### 遗留观察（非本计划引入，未修改）
 

@@ -122,7 +122,7 @@ cache 驱动为 file 时 session 无法跨容器重启保持。
 
 | 文件 | 改动 |
 | --- | --- |
-| `app/Common/Captcha.php` | **新增**。`issue(): string` 签发 token、`verify($token, $input): bool` 校验并一次性失效、`render(string $code): string` 绘制 PNG |
+| `app/Common/Captcha.php` | **新增**。`issue(int $ttl = 60): string` 签发 token、`verify($token, $input): bool` 校验并一次性失效、`render(string $code): string` 绘制 PNG |
 | `app/Http/Controllers/Admin/CaptchaController.php` | **新增**。`index()` 输出图片、`refresh()` 返回新 token |
 | `app/Http/Controllers/Index/CaptchaController.php` | **新增**。同上，供前台使用 |
 | `routes/web.php` | 加 `/admin/captcha`、`/admin/captcha/refresh` |
@@ -132,7 +132,16 @@ cache 驱动为 file 时 session 无法跨容器重启保持。
 | `resources/views/admin/login/index.blade.php` | hidden `captcha_token` + `refreshCaptcha()` |
 | `resources/views/index/message/message.blade.php` | 同上 |
 
-Redis key 格式 `captcha:{token}`，TTL 60s（与 realchip 一致）。
+Redis key 格式 `captcha:{token}`，一次性校验后立即 `del`。
+
+TTL 分两档：
+
+| 场景 | TTL | 理由 |
+| --- | --- | --- |
+| 后台登录 | 60s | 与 realchip 一致，登录操作很快 |
+| 前台留言 | 300s | 需填写称呼/电话/邮箱/内容，60s 容易过期 |
+
+过期或校验失败时前端 JS 自动刷新验证码重新获取 token，表单已填内容不丢失。
 
 **前台不能用 `/captcha`**：该路径已被 `mews/captcha` 包的 `CaptchaServiceProvider` 注册
 （`captcha/{config?}`），故前台使用 `/verifyCode`。`mews/captcha` 包保留不卸载。
@@ -155,13 +164,14 @@ Redis key 格式 `captcha:{token}`，TTL 60s（与 realchip 一致）。
 
 `public/upload/` 不在 git 中，首次部署需从本地 rsync 到服务器，否则网站图片 404。
 
-## 与 realchip 的三处刻意偏离
+## 与 realchip 的四处刻意偏离
 
 | # | realchip 做法 | 本项目做法 | 理由 |
 | --- | --- | --- | --- |
 | 1 | `.dockerignore` 不排除 `vendor` | 排除 `vendor` | 避免 COPY 携带 400MB 且随即被 `composer install` 覆盖 |
 | 2 | base compose 的 mysql/redis 端口绑 `0.0.0.0` | 绑 `127.0.0.1` 且端口改为 13306/16379 | 同机双项目需错开端口，同时避免数据库暴露公网 |
 | 3 | `generateCode()` 在 CaptchaController 和 LoginController 各复制一份 | 抽到 `app/Common/Captcha.php` 共用 | 前后台都要用，照抄会产生 3 份生成逻辑 + 2 份绘图逻辑 |
+| 4 | 后台/前台验证码 TTL 都是 60s | 后台 60s、前台 300s | 前台留言要填称呼/电话/邮箱/内容，60s 不够 |
 
 ## 约束
 

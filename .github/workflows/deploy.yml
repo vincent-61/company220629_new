@@ -18,6 +18,12 @@ jobs:
           script: |
             set -e
             cd /opt/company220629
+            for var in APP_KEY DB_PASSWORD; do
+              if ! grep -qE "^${var}=.+" .env 2>/dev/null; then
+                echo "ERROR: /opt/company220629/.env 缺少非空 ${var}，拒绝部署" >&2
+                exit 1
+              fi
+            done
             git pull origin main
             docker-compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null
             docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans

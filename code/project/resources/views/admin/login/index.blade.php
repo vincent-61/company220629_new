@@ -50,9 +50,10 @@
                 </div>
                 <div class="layui-form-item">
                     <label class="layui-icon layui-icon-vercode" for="captcha"></label>
-                    <input type="text" name="captcha" lay-verify="required|captcha" placeholder="图形验证码" autocomplete="off" class="layui-input verification captcha">
+                    <input type="text" name="captcha" lay-verify="required" placeholder="图形验证码" autocomplete="off" class="layui-input verification captcha">
+                    <input type="hidden" name="captcha_token" id="captchaToken" value="{{ $captcha_token }}">
                     <div class="captcha-img">
-                        <img id="captchaPic" src="{{ captcha_src('flat') }}" onclick="this.src='{{captcha_src('flat')}}'+Math.random()">
+                        <img id="captchaPic" src="/admin/captcha?token={{ $captcha_token }}" onclick="refreshCaptcha()" onerror="refreshCaptcha()">
                     </div>
                 </div>
                 <div class="layui-form-item">
@@ -69,6 +70,14 @@
 <script src="{{ $staticAdminUrl }}lib/layui-v2.6.8/layui.js" charset="utf-8"></script>
 <script src="{{ $staticAdminUrl }}lib/jq-module/jquery.particleground.min.js" charset="utf-8"></script>
 <script>
+    // 刷新验证码：向后台换一个新 token，再按新 token 取图
+    function refreshCaptcha() {
+        $.get('/admin/captcha/refresh', function (res) {
+            $('#captchaToken').val(res.token);
+            $('#captchaPic').attr('src', '/admin/captcha?token=' + res.token + '&' + Math.random());
+        });
+    }
+
     layui.use(['form'], function () {
         var form = layui.form,
             layer = layui.layer;
@@ -122,7 +131,7 @@
                             icon: 0,
                             time: 1000
                         },function () {
-                            $("#captchaPic").attr("src", "{{ captcha_src('flat') }}" + Math.random());
+                            refreshCaptcha();
                         });
                     }
                 }

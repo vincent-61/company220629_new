@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\Admin\CaptchaController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\ApiController;
 use App\Http\Controllers\Admin\IndexController;
@@ -31,6 +32,10 @@ use App\Http\Controllers\Admin\MessageController;
 
 // 后台
 Route::prefix('/admin')->group(function () {
+
+    // 验证码（登录页使用，无需登录态）
+    Route::get('/captcha', [CaptchaController::class, 'index']);
+    Route::get('/captcha/refresh', [CaptchaController::class, 'refresh']);
 
     Route::get('/', [IndexController::class, 'index']);
 

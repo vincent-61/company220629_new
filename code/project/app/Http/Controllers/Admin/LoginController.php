@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Common\Captcha;
 use App\Http\Controllers\Controller;
 use App\Http\Logic\Admin\LoginLogic;
 use Illuminate\Http\Request;
@@ -25,7 +26,9 @@ class LoginController extends Controller {
      */
     public function index()
     {
-        return view('admin.login.index');
+        return view('admin.login.index', [
+            'captcha_token' => Captcha::issue(Captcha::TTL_ADMIN),
+        ]);
     }
 
     /**
@@ -43,17 +46,30 @@ class LoginController extends Controller {
         $validate = Validator::make($request->all(), [
             'username' => 'required',
             'password' => 'required',
-            'captcha' => 'required|captcha',
+            'captcha' => 'required',
+            'captcha_token' => 'required',
+        ], [
+            'captcha.required' => '验证码不能为空',
+            'captcha_token.required' => '验证码已失效，请点击图片刷新',
         ]);
         if ($validate->fails()) {
             $msg = $validate->errors()->first();
             return $this->fail(1001, $msg);
         }
 
-        // 2: 执行检测登录操作
+        // 2: 校验验证码（一次性，校验后即销毁）
+        $captchaOk = Captcha::verify(
+            $request->input('captcha_token'),
+            $request->input('captcha')
+        );
+        if (!$captchaOk) {
+            return $this->fail(1001, '验证码不正确。');
+        }
+
+        // 3: 执行检测登录操作
         $username = $request->input('username');
         $password = $request->input('password');
-        $ip = $request->getClientIp();;
+        $ip = $request->getClientIp();
         $checkLogin = $this->loginLogic->checkLogin($username, $password, $ip);
         if ($checkLogin['code'] !== 0) {
             return $this->fail($checkLogin['code'], $checkLogin['message']);

@@ -35,7 +35,8 @@ Route::prefix('/admin')->group(function () {
 
     // 验证码（登录页使用，无需登录态）
     Route::get('/captcha', [CaptchaController::class, 'index']);
-    Route::get('/captcha/refresh', [CaptchaController::class, 'refresh']);
+    // refresh 会签发新的 Redis key，按 IP 限流；index 只渲染或返回 410，不限流
+    Route::get('/captcha/refresh', [CaptchaController::class, 'refresh'])->middleware('throttle:30,1');
 
     Route::get('/', [IndexController::class, 'index']);
 

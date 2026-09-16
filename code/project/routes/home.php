@@ -56,7 +56,8 @@ Route::post('/sendMessage', [MessageController::class, 'sendMessage']); // 新�
 
 // 验证码（前台不能用 /captcha，该路径被 mews/captcha 包占用）
 Route::get('/verifyCode', [CaptchaController::class, 'index']);
-Route::get('/verifyCode/refresh', [CaptchaController::class, 'refresh']);
+// refresh 会签发新的 Redis key，按 IP 限流；index 只渲染或返回 410，不限流
+Route::get('/verifyCode/refresh', [CaptchaController::class, 'refresh'])->middleware('throttle:30,1');
 
 
 // 手机端

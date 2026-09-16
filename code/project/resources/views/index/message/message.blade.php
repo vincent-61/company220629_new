@@ -40,7 +40,8 @@
                                     </div>
                                     <div class="row-3">
                                         <input type="text" class="code" name="captcha" value="" placeholder="验证码" data-required="required" null="请输入验证码" maxlength="4">
-                                        <img id="captchaPic" src="{{ captcha_src('flat') }}" onclick="this.src='{{captcha_src('flat')}}'+Math.random()">
+                                        <input type="hidden" name="captcha_token" id="captchaToken" value="{{ $captcha_token }}">
+                                        <img id="captchaPic" src="/verifyCode?token={{ $captcha_token }}" onclick="refreshCaptcha()" onerror="refreshCaptcha()">
                                     </div>
                                     <div class="row-3">
                                         <input type="button" class="submit" value="提交" id="messageButton">
@@ -59,6 +60,14 @@
 
     <script src="{{ $staticUrl }}js/jquery.min.js" type='text/javascript'></script>
     <script type="text/javascript">
+        // 刷新验证码：向后台换一个新 token，再按新 token 取图
+        function refreshCaptcha() {
+            $.get('/verifyCode/refresh', function (res) {
+                $('#captchaToken').val(res.token);
+                $('#captchaPic').attr('src', '/verifyCode?token=' + res.token + '&' + Math.random());
+            });
+        }
+
         $(function() {
             $('#messageButton').on("click", function() {
                 $.ajax({
@@ -69,7 +78,8 @@
                     success: function (res) {
                         alert(res.message);
                         if (res.code !== 0) {
-                            $("#captchaPic").attr("src", "{{ captcha_src('flat') }}" + Math.random());
+                            // 验证码错误或已过期：换新 token，表单已填内容保留
+                            refreshCaptcha();
                         } else {
                             location.reload();
                         }

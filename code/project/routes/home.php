@@ -7,6 +7,7 @@ use App\Http\Controllers\Index\ProductController;
 use App\Http\Controllers\Index\NewsController;
 use App\Http\Controllers\Index\QualificationController;
 use App\Http\Controllers\Index\MessageController;
+use App\Http\Controllers\Index\CaptchaController;
 
 use App\Http\Controllers\Wap\IndexController as WapIndexController;
 use App\Http\Controllers\Wap\ProductController as WapProductController;
@@ -52,6 +53,10 @@ Route::get('/qualification/detail/{news_id}.html', [QualificationController::cla
 // 在线留言
 Route::get('/message.html', [MessageController::class, 'message']); // 联系页面
 Route::post('/sendMessage', [MessageController::class, 'sendMessage']); // 新闻栏目
+
+// 验证码（前台不能用 /captcha，该路径被 mews/captcha 包占用）
+Route::get('/verifyCode', [CaptchaController::class, 'index']);
+Route::get('/verifyCode/refresh', [CaptchaController::class, 'refresh']);
 
 
 // 手机端

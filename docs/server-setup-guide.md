@@ -272,7 +272,22 @@ nginx -t && systemctl reload nginx
 
 ## 七、申请 SSL 证书
 
-> **先完成文首的 CentOS 7 换源，再执行本节。** certbot 走 EPEL，而 EPEL 7 已随
+> **前置一：域名必须已经解析到本机。** certbot 默认用 HTTP-01 挑战，会从**公网**
+> 访问 `http://<域名>/.well-known/acme-challenge/...` 来验证域名归属。解析没生效时
+> certbot 必然失败——那是解析没到，不是 nginx 配错。执行本节前先确认：
+>
+> ```bash
+> dig +short www.yunqingelec.com yunqingelec.com   # 两条都应返回 39.108.218.82
+> ```
+>
+> 在域名控制台加两条 A 记录：主机记录 `www` 和 `@`，值都是 `39.108.218.82`。
+> 生效（通常几分钟到几小时）后再往下走。
+>
+> 另外：本机在中国大陆，域名需已完成 ICP 备案，否则 80/443 会被拦。
+> 数据库 `app_platform.copyright` 里写的是 `粤ICP备2022046179号-1`——**确认一下这个
+> 备案号是不是 yunqingelec.com 的**；备案是跟着域名走的，换域名要一并处理。
+
+> **前置二：先完成文首的 CentOS 7 换源，再执行本节。** certbot 走 EPEL，而 EPEL 7 已随
 > CentOS 7 EOL 归档，未换源时 `yum install` 会直接 404（Cannot find a valid baseurl）。
 > EPEL 的归档地址与文首相同：`https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/`
 > —— 先 `yum install -y epel-release`，再把 `/etc/yum.repos.d/epel*.repo` 里的

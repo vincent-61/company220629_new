@@ -1,0 +1,24 @@
+# 生产环境覆盖层 —— 只写与 docker-compose.yml 的差异
+# 使用: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# 注意：docker compose 对 ports 是「合并」而非「替换」。
+# 写 `ports: []` 是没用的 —— 空数组对合并毫无贡献，基础文件的端口会原样保留，
+# 生产环境仍会把 MySQL/Redis 发布到宿主机回环地址上。
+# 必须用 `!reset` 标签显式重置，才能把端口真正清掉（需要 Compose >= 2.24.4）。
+# 同理这里绝不重写 project 的 ports，否则会一并覆盖掉基础文件的映射。
+
+services:
+  project:
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://www.company220629.com
+      - APP_KEY=${APP_KEY}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - LOG_LEVEL=error
+
+  mysql:
+    ports: !reset []
+
+  redis:
+    ports: !reset []

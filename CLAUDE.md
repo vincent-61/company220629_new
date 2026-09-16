@@ -27,7 +27,7 @@ company220629_new/
 │       │   ├── Logic/         # 业务逻辑层
 │       │   └── Middleware/    # check.admin.login 等
 │       └── Models/        # 模型层
-├── code/mysql/            # MySQL 数据目录（volume 挂载，git 忽略）
+├── code/mysql/            # MySQL 数据目录（宿主目录 bind mount，git 忽略）
 ├── docker/mysql/          # 初始化 SQL，首次启动自动导入
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
@@ -60,7 +60,7 @@ Controller（参数校验、调 Logic、返回 JSON）
 `mews/captcha` 包仍在依赖里但**已不使用**（BcryptHasher + Session 在容器内不可靠）。
 现用 `App\Common\Captcha`：
 
-- `Captcha::issue(int $ttl): string` —— 签发 token，Redis key `captcha:{token}`
+- `Captcha::issue(int $ttl): string` —— 签发 token，Redis key `captcha:{token}`（Laravel 会前置 `REDIS_PREFIX=company_`，**线上真实键名是 `company_captcha:{token}`**，查 `captcha:*` 永远空集）
 - `Captcha::verify(?string $token, ?string $input): bool` —— 一次性校验，校验后即删
 - `Captcha::render(string $token): ?string` —— 渲染 PNG，token 失效返回 null
 

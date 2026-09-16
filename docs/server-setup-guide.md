@@ -176,11 +176,11 @@ curl -I http://127.0.0.1:8089
 
 预期：三个容器都是 `Up`，curl 返回 `HTTP/1.1 200 OK`。
 
-上传站点图片（`public/upload` 不在 git 中，必须从本地同步，约 100MB）：
+上传站点图片（`code/project/public/upload` 不在 git 中，必须从本地同步，约 100MB）：
 
 ```bash
-# 在本地执行
-rsync -avz --progress public/upload/ root@39.108.218.82:/opt/company220629/code/project/public/upload/
+# 在本地执行（注意：应用根目录是 code/project/，不是仓库根目录）
+rsync -avz --progress code/project/public/upload/ root@39.108.218.82:/opt/company220629/code/project/public/upload/
 ```
 
 ---
@@ -199,7 +199,7 @@ server {
         proxy_pass http://127.0.0.1:8089;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
         client_max_body_size 20M;
     }
@@ -208,6 +208,14 @@ EOF
 
 nginx -t && systemctl reload nginx
 ```
+
+> `X-Forwarded-For` 用 `$remote_addr` 覆写而非 `$proxy_add_x_forwarded_for` 追加，是刻意的：
+> 容器里的 `TrustProxies` 信任全部代理（`$proxies = '*'`），而 Laravel 取的是转发链**最左**的
+> 那个地址。用追加写法时，客户端自己带的 `X-Forwarded-For` 会排在前面并被采信，等于访客可以
+> 自己决定 `$request->ip()`，验证码刷新接口的按 IP 限流（`throttle:30,1`）随之失效。
+> 本项目是「客户端 → 宿主 nginx → 容器」的单层代理，覆写才是对的。
+> 将来若在前面加 CDN，这一行必须改回并配合 `set_real_ip_from` / `real_ip_header`，否则拿到的
+> 会是 CDN 节点地址。
 
 > CentOS 上 yum 装的 Nginx，`conf.d/*.conf` 默认已包含在 `http` 块内；若没有，
 > 把这行加进 `/etc/nginx/nginx.conf` 的 `http {}`：`include /etc/nginx/conf.d/*.conf;`
@@ -257,7 +265,8 @@ docker-compose exec redis redis-cli KEYS 'company_captcha:*'
 > mysql 那条写成 `sh -c` 是刻意的：`mysql -uroot -p` 会交互式提示输入口令，在非交互
 > 环境（CI、`ssh host '命令'`）下会直接失败，手工输入时还会把口令留在 shell history
 > 里。容器内本来就有 `MYSQL_ROOT_PASSWORD`，交给容器里的 shell 展开即可，口令值不会
-> 出现在命令行上。
+> 进入你手敲的命令和 shell history。（它仍会出现在容器内 `mysql` 进程的 argv 里，这正是 MySQL
+> 不建议用 `-p` 传口令的原因；这里的收益是操作侧不留痕，不是进程级隐藏。）
 >
 > redis 的 `company_` 前缀来自 compose 里的 `REDIS_PREFIX=company_`：Laravel 会把它拼到
 > `App\Common\Captcha` 写入的 `captcha:{token}` 前面，所以 Redis 中真实的 key 是

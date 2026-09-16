@@ -30,8 +30,8 @@
 | `docker-compose.prod.yml` | 生产覆盖层，用 `ports: !reset []` 清掉 mysql/redis 端口 |
 | `code/project/Dockerfile` | PHP 8.1-fpm + nginx 单容器，构建期 `storage:link` |
 | `code/project/nginx.conf` | 站点配置，root 指向 `public` |
-| `code/project/php.ini` | 时区 PRC、上传/内存等参数 |
-| `code/project/docker-entrypoint.sh` | `php-fpm -D` + nginx 前台 |
+| `code/project/php.ini` | `date.timezone = Asia/Shanghai`、上传/内存等参数（时区也可由 `APP_TIMEZONE=PRC` 覆盖） |
+| `code/project/docker-entrypoint.sh` | `php-fpm &` 后 `exec nginx -g 'daemon off;'`（**刻意不用 `-D`**：`-D` 会强制 daemonize，使 `docker.conf` 里的 `error_log`/`access_log` 指向 `/dev/null`，FPM 日志全部丢失） |
 | `code/project/.dockerignore` | 排除 `vendor`、`.user.ini`（其 `open_basedir` 指向不存在的路径） |
 | `.github/workflows/deploy.yml` | 推送 main 自动部署 |
 | `.gitignore` | 忽略 `.env`、`code/mysql/*`（保留 `.gitkeep`） |
@@ -52,7 +52,7 @@
 
 | 验证项 | 命令 | 实测结果 | 结论 |
 | --- | --- | --- | --- |
-| 构建启动 | `docker compose up -d --build` | 三容器 Created → Started，mysql 12s 内 `Up (healthy)` | 通过 |
+| 构建启动 | `docker compose up -d --build` | 三容器 Created → Started，启动后约 12 秒内转为 `Up (healthy)` | 通过 |
 | 初始化 SQL | `show tables` | 13 张 `app_` 前缀表 | 通过 |
 | PHP 扩展 | `php -m` | 7 项匹配 + `Zend OPcache`（见下方说明） | 通过 |
 | 时区 | `php -r 'echo date_default_timezone_get();'` | `Asia/Shanghai` | 通过 |
@@ -86,7 +86,7 @@
    并携带同一 session cookie jar 后，两个接口均返回预期 JSON。
 5. `app_message` 没有 `create_time` 列（plan Step 6 的命令会报
    `ERROR 1054 Unknown column`），实际列为 `created_at`（int 时间戳）。
-6. 首次 MySQL 初始化实测约 14 秒（05:29:39 起，05:29:48 完成），快于计划书的 1-2 分钟，
+6. 首次 MySQL 初始化实测约 9 秒（05:29:39 → 05:29:48），快于计划书的 1-2 分钟，
    因为导入的是 143KB 纯 SQL，无大表填充。
 
 ### 约束核对
@@ -96,6 +96,6 @@
 | 与 realchip 端口不冲突 | project 8089、mysql 13306、redis 16379，全部绑 127.0.0.1 | 三个端口均实测为 `127.0.0.1:*`，无公网绑定 |
 | 容器名不冲突 | company220629-{project,mysql,redis} | 一致 |
 | 网络不冲突 | company220629-network | 一致 |
-| 单容器 | php-fpm -D + nginx 前台，同容器 | 一致 |
+| 单容器 | `php-fpm &` + `exec nginx` 前台，同容器 | 一致 |
 | 表前缀 app_ | DB_PREFIX=app_ | 13 张表全为 `app_` 前缀 |
 | 验证码可用 | 纯 Redis token，后台 60s / 前台 300s | TTL 实测 60 / 299；`/verifyCode` 与 `captcha/{config?}` 并存不冲突 |

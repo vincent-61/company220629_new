@@ -184,3 +184,27 @@ TTL 分两档：
 - CentOS 7.6：cgroup v1、yum 包管理、firewalld
 - 域名 `www.company220629.com`，服务器 `39.108.218.82`，部署路径 `/opt/company220629`
 - 与 realchip 同机部署，端口不得冲突
+
+## 实施期修订
+
+本节记录实现过程中推翻或补充了正文的裁定。正文保留原样以便追溯；两者冲突时，以本节为准。
+（本节的每一条都对应实现期间的一次实测或一次有据的裁定，不是事后追认。）
+
+| # | 正文原文 | 实际实现 | 原因 |
+| --- | --- | --- | --- |
+| 1 | §生产环境差异：「`ports: []`（完全不暴露）」 | `ports: !reset []` | compose 对 `ports` 是按**列表合并**的，空列表不移除任何端口，端口会原样保留；只有 `!reset`（Compose ≥ 2.24.4）才真正清除。已在真实 v2.24.6 二进制上实测确认。正文该处已就地更正。 |
+| 2 | §验证码改造：「Redis key 格式 `captcha:{token}`」 | 线上键为 `company_captcha:{token}` | Laravel 会把 `REDIS_PREFIX=company_` 前置到该连接的**所有**键（`config/database.php` 的 redis 连接 → `RedisManager` → `PhpRedisConnector` 的 `OPT_PREFIX`）。不带前缀的键根本不存在，`EXISTS` 返回 0 会被误读成「已被一次性消费」。 |
+| 3 | §验证码改造：`Captcha.php` 只规定 `issue/verify/render` 三个方法 | 另加：token 用 `bin2hex(random_bytes(16))`、验证码字符用 `random_int()`、`verify()` 先 `del` 再判空、绘图的 `ob_get_clean()` 置于 `finally` | 生成源由非 CSPRNG（`md5(uniqid(mt_rand()))`）换成 CSPRNG；「先删后判」才是真正的一次性语义（先判后删会让空输入路径留下活键）；`finally` 保证异常路径不泄漏输出缓冲。 |
+| 4 | 正文未提及限流 | `/admin/captcha/refresh` 与 `/verifyCode/refresh` 加 `throttle:30,1`；`TrustProxies::$proxies = '*'` | token 签发端点无限流时，单个 IP 即可无限量往 Redis 写键；前台 TTL 是 300s，窗口内积累的活跃键数量只受请求速率限制，没有上限。两项必须同批落地：不信任代理时 `$request->ip()` 对所有访客都返回同一个 docker 网关地址，per-route 限流会退化成**全局单桶**，比不限流更糟。两个验证码**索引**路由刻意不限流（渲染图片本就需要刷新）。 |
+| 5 | §生产环境差异未列日志项 | 加 `LOG_LEVEL=error`、`LOG_CHANNEL=daily` | 生产沿用 `stack`（单文件）会让 `laravel.log` 无界增长。 |
+| 6 | §部署流程未提部署前校验 | workflow 在 `git pull` 前校验 `.env` 中 `APP_KEY`、`DB_PASSWORD` 非空，缺失即中止部署 | 缺 `DB_PASSWORD` 时 compose 只打印一行警告，并把 `MYSQL_ROOT_PASSWORD` 合并成空串（v2.24.6 实测），会静默起一个无口令的数据库。 |
+| 7 | §mysql 容器「健康检查: `mysqladmin ping`」 | `mysqladmin ping -h 127.0.0.1 -u root -p"$MYSQL_ROOT_PASSWORD"` | 镜像内的 `mysqladmin` 默认走 unix socket，探针无法反映 TCP 服务是否可用；无凭据的 TCP 探针在部分配置下会被服务器拒绝。 |
+| 8 | §目录结构只列 `.dockerignore` 需排除 `vendor` | 额外排除 `.user.ini` | 仓库里的 `.user.ini` 把 `open_basedir` 指向容器内并不存在的路径，打进镜像会限制 PHP 的文件访问范围。 |
+| 9 | 正文未提及验证码刷新的失败路径 | 两个 blade 的 `refreshCaptcha()` 补 `error` 回调 | 第 4 条的限流是本项目新增的，触发 429 时原 `$.get` 无失败回调，刷新会静默失效——即「点验证码没反应」。这条回归由限流引入，必须与它同批修复。 |
+| 10 | 正文未规定宿主 Nginx 的转发头 | 指南第六节改为 `proxy_set_header X-Forwarded-For $remote_addr;`（覆写） | 容器内 `TrustProxies::$proxies = '*'` 信任全部代理，Laravel 取转发链最左地址；用 `$proxy_add_x_forwarded_for` 追加时客户端自带的值会被采信，`$request->ip()` 由访客决定，第 4 条的按 IP 限流随之失效。单层代理下覆写才正确；将来加 CDN 需改用 `set_real_ip_from`。 |
+
+### 遗留观察（非本计划引入，未修改）
+
+- `VerifyCsrfToken::$except = ['login/*']` 匹配不到 `admin/login/checkLogin`：Laravel 的
+  `inExceptArray()` 按整条路径匹配，路由挪到 `admin/` 前缀下之后这条豁免就已失效。
+  后果是 CSRF 反而**更严**（该接口现在真的校验 token），不是漏洞。两个表单的 blade 都显式携带 CSRF token（`{{ csrf_token() }}`：后台是 `data` 里拼 `&_token=`，前台是拼在 URL 查询串上），浏览器路径正常。留着不动，仅记录，避免下次有人以为它还在生效。

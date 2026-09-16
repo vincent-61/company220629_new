@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-16-dockerize-design.md`
 
+> 实现期间对 spec 正文的修订（含 Redis 键前缀、`!reset`、限流与转发头）见 spec 末尾的「实施期修订」一节；与 spec 正文冲突时以该节为准。
+
 ## Global Constraints
 
 - PHP 8.1（`composer.json` 约束 `^7.3|^8.0`），Laravel 8.65

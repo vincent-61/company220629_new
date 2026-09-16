@@ -151,7 +151,9 @@ TTL 分两档：
 - `APP_ENV=production`、`APP_DEBUG=false`
 - `APP_URL=https://www.company220629.com`
 - `APP_KEY`、`DB_PASSWORD` 从服务器 `.env` 注入
-- mysql、redis `ports: []`（完全不暴露）
+- mysql、redis 用 `ports: !reset []` 移除端口（完全不暴露）
+  > 原写的是 `ports: []`，**那是错的**：compose 对 `ports` 按列表合并，空列表不移除任何东西，
+  > 端口会原样保留。只有 `!reset`（Compose ≥ 2.24.4）才会真正清除。已在 v2.24.6 实测确认。
 
 ## 部署流程
 

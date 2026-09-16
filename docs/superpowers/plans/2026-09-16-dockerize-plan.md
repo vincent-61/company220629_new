@@ -1499,6 +1499,33 @@ git commit -m "[captcha] 前台留言改用 Redis token 验证码"
 
 > 本服务器上同时运行 realchip 项目（占用 8088/3306/6379）。本项目使用
 > 8089/13306/16379，互不冲突。执行本文档命令时注意不要动 `/opt/realchip`。
+>
+> **顺带排查（不属于本项目改动范围）：** realchip 的 `docker-compose.prod.yml`
+> 用 `ports: []` 来"关闭"数据库端口，但 compose 对 `ports` 是按列表合并的，
+> **空列表不会移除任何东西**——只有 `!reset []` 才会。因此该项目的 mysql/redis
+> 很可能仍以 `0.0.0.0:3306` / `0.0.0.0:6379` 对外发布（本项目已改用 `!reset []`）。
+> 请用下面的命令确认，若确实暴露则用 firewalld 挡住或改用 `!reset []`：
+>
+> ```bash
+> ss -lntp | grep -E ':(3306|6379)\b'
+> firewall-cmd --list-ports
+> ```
+
+> **CentOS 7 已停止维护（EOL 2024-06-30）。** `mirror.centos.org` 已下线，
+> 默认 yum 源和 EPEL 7 都会报 404 / Cannot find a valid baseurl。安装任何包之前，
+> 先把源指向归档地址（`vault.centos.org`），否则下面所有 `yum install` 都会失败：
+>
+> ```bash
+> sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-*.repo
+> sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo
+> yum clean all && yum makecache
+> ```
+>
+> 需要 EPEL 的话同样改用归档：`https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/`。
+
+> **本机 Docker 与 Compose 版本要求。** `docker-compose.prod.yml` 使用了
+> `!reset` 标签，该标签需要 Compose **≥ 2.24.4**。服务器上的 standalone
+> `docker-compose` 必须是 v2 且不低于此版本（本文档第三节安装的是 v2.24.6）。
 
 ---
 
@@ -1612,6 +1639,24 @@ DB_PASSWORD=root_company220629_202609
 EOF
 chmod 600 /opt/company220629/.env
 ```
+
+> **`DB_PASSWORD` 一旦首次初始化就固定了。** MySQL 官方入口脚本只在数据目录为空时
+> 执行 `ALTER USER 'root'@'localhost' IDENTIFIED BY ...`；本项目的 `code/mysql/` 是
+> 宿主机 bind mount，所以首次 `up` 之后改 `.env` 里的 `DB_PASSWORD` **不会**改变
+> 数据库里已存在的 root 口令，重启也无效，表现为应用每个请求都报
+> `SQLSTATE[HY000] [1045]`，而 `docker-compose ps` 里 mysql 仍然是 healthy。
+> 要改口令只能二选一：
+>
+> ```bash
+> # 方案 A：容器内改（保留数据）
+> docker-compose exec mysql mysql -uroot -p'旧口令' -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '新口令';"
+> # 方案 B：清空数据目录重来（会丢数据，首次部署尚未导入时可以这么做）
+> docker-compose down && rm -rf code/mysql/* && docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+> ```
+>
+> 部署脚本已经加了前置校验：`.env` 里 `APP_KEY` 或 `DB_PASSWORD` 缺失或为空时直接
+> 报错退出。这一步是必要的——`DB_PASSWORD` 为空时 compose 会代入空串，MySQL 会以
+> **无口令的 root** 初始化，而应用照样连得上，属于静默故障。
 
 首次启动（第一次会自动导入 `docker/mysql/01-company220629.sql`，耗时 1-2 分钟）：
 

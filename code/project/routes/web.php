@@ -58,7 +58,8 @@ Route::prefix('/admin')->group(function () {
 
     // 登录
     Route::prefix('/login')->group(function () {
-        Route::get('/index', [LoginController::class, 'index']); // 登录首页
+        // 每次渲染都会 Captcha::issue() 写一个 Redis 键，按 IP 限流
+        Route::get('/index', [LoginController::class, 'index'])->middleware('throttle:60,1'); // 登录首页
         Route::post('/checkLogin', [LoginController::class, 'checkLogin']); // 登录校验
         Route::post('/loginOut', [LoginController::class, 'loginOut']); // 登录校验
     });

@@ -51,7 +51,8 @@ Route::get('/qualification/list/{category_id}.html', [QualificationController::c
 Route::get('/qualification/detail/{news_id}.html', [QualificationController::class, 'qualification']); // 资质详情
 
 // 在线留言
-Route::get('/message.html', [MessageController::class, 'message']); // 联系页面
+// 每次渲染都会 Captcha::issue() 写一个 Redis 键，按 IP 限流；60/min 远高于真人翻页频率
+Route::get('/message.html', [MessageController::class, 'message'])->middleware('throttle:60,1'); // 联系页面
 Route::post('/sendMessage', [MessageController::class, 'sendMessage']); // 新闻栏目
 
 // 验证码（前台不能用 /captcha，该路径被 mews/captcha 包占用）

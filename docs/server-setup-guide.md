@@ -216,6 +216,12 @@ nginx -t && systemctl reload nginx
 
 ## 七、申请 SSL 证书
 
+> **先完成文首的 CentOS 7 换源，再执行本节。** certbot 走 EPEL，而 EPEL 7 已随
+> CentOS 7 EOL 归档，未换源时 `yum install` 会直接 404（Cannot find a valid baseurl）。
+> EPEL 的归档地址与文首相同：`https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/`
+> —— 先 `yum install -y epel-release`，再把 `/etc/yum.repos.d/epel*.repo` 里的
+> `mirrorlist` 注释掉、`baseurl` 指向该归档地址，最后 `yum clean all && yum makecache`。
+
 ```bash
 yum install -y certbot python2-certbot-nginx
 certbot --nginx -d www.company220629.com -d company220629.com
@@ -244,9 +250,19 @@ docker image prune -f
 
 ```bash
 docker-compose logs -f project
-docker-compose exec mysql mysql -uroot -p company220629 -e "show tables;"
-docker-compose exec redis redis-cli KEYS 'captcha:*'
+docker-compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" company220629 -e "show tables;"'
+docker-compose exec redis redis-cli KEYS 'company_captcha:*'
 ```
+
+> mysql 那条写成 `sh -c` 是刻意的：`mysql -uroot -p` 会交互式提示输入口令，在非交互
+> 环境（CI、`ssh host '命令'`）下会直接失败，手工输入时还会把口令留在 shell history
+> 里。容器内本来就有 `MYSQL_ROOT_PASSWORD`，交给容器里的 shell 展开即可，口令值不会
+> 出现在命令行上。
+>
+> redis 的 `company_` 前缀来自 compose 里的 `REDIS_PREFIX=company_`：Laravel 会把它拼到
+> `App\Common\Captcha` 写入的 `captcha:{token}` 前面，所以 Redis 中真实的 key 是
+> `company_captcha:{token}`。该前缀用于与其他项目共用同一 Redis 时隔离命名空间，
+> **不要**改回不带前缀的 `captcha:*`——那样查出来永远是空集。
 
 ---
 

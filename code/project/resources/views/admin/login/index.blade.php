@@ -70,20 +70,21 @@
 <script src="{{ $staticAdminUrl }}lib/layui-v2.6.8/layui.js" charset="utf-8"></script>
 <script src="{{ $staticAdminUrl }}lib/jq-module/jquery.particleground.min.js" charset="utf-8"></script>
 <script>
-    // 刷新验证码：向后台换一个新 token，再按新 token 取图
-    function refreshCaptcha() {
-        $.get('/admin/captcha/refresh', function (res) {
-            $('#captchaToken').val(res.token);
-            $('#captchaPic').attr('src', '/admin/captcha?token=' + res.token + '&' + Math.random());
-        }).fail(function () {
-            // 429：刷新过于频繁。不自动重试（重试只会继续撞限流），提示用户稍后再点。
-            layui.layer.msg('验证码刷新过于频繁，请稍后再试', {icon: 2});
-        });
-    }
-
     layui.use(['form'], function () {
         var form = layui.form,
             layer = layui.layer;
+
+        // 刷新验证码：向后台换一个新 token，再按新 token 取图
+        function refreshCaptcha() {
+            $.get('/admin/captcha/refresh', function (res) {
+                $('#captchaToken').val(res.token);
+                $('#captchaPic').attr('src', '/admin/captcha?token=' + res.token + '&' + Math.random());
+            }).fail(function () {
+                // 429：刷新过于频繁。不自动重试（重试只会继续撞限流），提示用户稍后再点。
+                layer.msg('验证码刷新过于频繁，请稍后再试', {icon: 2});
+            });
+        }
+        window.refreshCaptcha = refreshCaptcha;   // 图片的 onerror 在 HTML 属性里，需要全局名
 
         // 登录过期的时候，跳出ifram框架
         if (top.location != self.location) top.location = self.location;

@@ -86,7 +86,7 @@
    并携带同一 session cookie jar 后，两个接口均返回预期 JSON。
 5. `app_message` 没有 `create_time` 列（plan Step 6 的命令会报
    `ERROR 1054 Unknown column`），实际列为 `created_at`（int 时间戳）。
-6. 首次 MySQL 初始化实测约 9 秒（05:29:39 → 05:29:48），快于计划书的 1-2 分钟，
+6. 首次 MySQL 初始化实测十余秒即完成（`Ready for start up` 出现在 05:29:48），远快于计划书的 1-2 分钟，
    因为导入的是 143KB 纯 SQL，无大表填充。
 
 ### 约束核对

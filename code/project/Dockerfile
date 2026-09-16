@@ -48,7 +48,13 @@ RUN ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
 # 安装 Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# 刻意不用 `COPY --from=composer:2`：国内服务器解析该镜像的元数据要回源 Docker Hub，
+# 表现为 `failed to read expected number of bytes: unexpected EOF` 卡满超时（php:8.1-fpm
+# 因为镜像站有缓存所以不受影响）。改为直接从阿里云取 phar，与上面的 apt 源同一网络路径。
+RUN curl -fsSL --retry 3 --retry-delay 2 \
+        https://mirrors.aliyun.com/composer/composer.phar -o /usr/local/bin/composer \
+    && chmod +x /usr/local/bin/composer \
+    && composer --version
 
 # 创建工作目录
 WORKDIR /var/www/html

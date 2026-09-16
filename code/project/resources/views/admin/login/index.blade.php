@@ -75,6 +75,9 @@
         $.get('/admin/captcha/refresh', function (res) {
             $('#captchaToken').val(res.token);
             $('#captchaPic').attr('src', '/admin/captcha?token=' + res.token + '&' + Math.random());
+        }).fail(function () {
+            // 429：刷新过于频繁。不自动重试（重试只会继续撞限流），提示用户稍后再点。
+            layui.layer.msg('验证码刷新过于频繁，请稍后再试', {icon: 2});
         });
     }
 

@@ -65,6 +65,9 @@
             $.get('/verifyCode/refresh', function (res) {
                 $('#captchaToken').val(res.token);
                 $('#captchaPic').attr('src', '/verifyCode?token=' + res.token + '&' + Math.random());
+            }).fail(function () {
+                // 429：刷新过于频繁。不自动重试（见上），前台沿用本文件已有的 alert 提示方式。
+                alert('验证码刷新过于频繁，请稍后再试');
             });
         }
 

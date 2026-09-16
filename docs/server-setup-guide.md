@@ -68,6 +68,14 @@ ssh -i ~/.ssh/company220629_deploy root@39.108.218.82 "echo ok"
 cat ~/.ssh/company220629_deploy   # 复制输出（含 BEGIN/END 行）
 ```
 
+> **顺序：先把上面三个 secret 配好，再往 `main` 推代码。**
+> 反过来的话，推送触发的第一次部署会在 SSH 连接阶段失败——secret 里没有凭据可读。
+> 这**不会影响服务器**（那时服务器通常还没建）。若已经推了，配完 secret 后到仓库的
+> **Actions** 页选中那次失败的运行，点 **Re-run jobs** 即可，不需要再提交一次。
+>
+> 另：部署脚本只在 **push 到 `main`** 时触发（另有 `workflow_dispatch` 可手动触发）。
+> `dockerize` 这类开发分支没有上游，推不推都不触发部署。
+
 ---
 
 ## 二、安装 Docker CE
@@ -283,9 +291,31 @@ certbot renew --dry-run
 
 ---
 
-## 八、日常更新
+## 八、部署：首次推送与日常更新
 
-推送到 `main` 分支即自动部署（GitHub Actions）。手动部署：
+### 首次：合并并推送
+
+服务器按 §一–§七 建好、且 §一 的三个 secret 已配好后，在**本地仓库**执行：
+
+```bash
+git checkout main
+git merge --ff-only dockerize
+git push origin main
+```
+
+`--ff-only` 是刻意的：如果这个命令报错，说明 `main` 上有 `dockerize` 没有的提交，
+要先看清楚再合，**不要改用 `--no-ff` 蒙混过去**。
+
+推送即触发一次部署。若这时服务器还没就绪，那次失败是预期内的，不用管那个红叉——
+建好后按下面的「手动触发」重跑一次即可。
+
+### 日常更新
+
+推送到 `main` 分支即自动部署（GitHub Actions）。
+
+**手动触发 Actions**：仓库页 → **Actions** → 左侧 **Deploy to VPS** → 右上 **Run workflow**。
+
+**在服务器上手动部署**（绕过 Actions）：
 
 ```bash
 cd /opt/company220629

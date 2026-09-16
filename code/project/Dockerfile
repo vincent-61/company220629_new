@@ -40,7 +40,7 @@ COPY nginx.conf /etc/nginx/sites-available/default
 RUN rm -f /etc/nginx/sites-enabled/default && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 # 安装 Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # 创建工作目录
 WORKDIR /var/www/html
@@ -49,7 +49,11 @@ WORKDIR /var/www/html
 COPY . .
 
 # 确保所需目录存在（composer install 的 post-autoload-dump 需要 bootstrap/cache）
-RUN mkdir -p /var/www/html/bootstrap/cache /var/www/html/storage/framework/{cache,sessions,views}
+RUN mkdir -p /var/www/html/bootstrap/cache \
+             /var/www/html/storage/framework/cache \
+             /var/www/html/storage/framework/sessions \
+             /var/www/html/storage/framework/views \
+             /var/www/html/storage/logs
 
 # 安装依赖
 RUN composer install --no-dev --optimize-autoloader --no-interaction

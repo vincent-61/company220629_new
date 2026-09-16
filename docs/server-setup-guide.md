@@ -133,19 +133,35 @@ firewall-cmd --list-all
 
 ```bash
 mkdir -p /opt && cd /opt
-git clone <仓库地址> company220629
+git clone https://github.com/vincent-61/company220629_new.git company220629
 cd /opt/company220629
 ```
+
+> 用 **HTTPS** 地址：仓库是公开的，匿名克隆即可，服务器上不需要配任何 GitHub 凭据。
+> 不要换成 SSH 地址——§一 生成的那对密钥是给 GitHub Actions **登录服务器**用的，
+> 服务器本身没有对应的 GitHub 私钥，换成 SSH 地址后克隆会失败，
+> 而后面的 `git pull origin main` 每次部署都会失败。
 
 创建生产环境变量文件（compose 的 `${APP_KEY}` / `${DB_PASSWORD}` 从这里读）：
 
 ```bash
+# 只属于这台服务器的两个值，现场生成。不要使用仓库里出现的任何字面量。
+echo "APP_KEY=base64:$(openssl rand -base64 32)"          # → 粘到下面的 APP_KEY=
+echo "DB_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-32)"  # → 粘到下面的 DB_PASSWORD=
+
 cat > /opt/company220629/.env <<'EOF'
-APP_KEY=base64:37EEUd3g7goqcBVM+gL3nKSusFmA3oBcH50pNXc0Wbw=
-DB_PASSWORD=root_company220629_202609
+APP_KEY=<上面第一行的输出>
+DB_PASSWORD=<上面第二行的输出>
 EOF
 chmod 600 /opt/company220629/.env
 ```
+
+> **为什么必须现场生成：本仓库是公开的。** `docker-compose.yml` 里提交的
+> `APP_KEY` 与 `DB_PASSWORD` 是**本地开发用的默认值**（`docker-compose.yml:13,22,51`；
+> APP_KEY 在 `main` 的 `.env.example` 里已经公开）。生产覆盖层把这两个值改成从本文件读
+> （`docker-compose.prod.yml:16,17,28`），所以生产用哪一套完全取决于你在这里写什么。
+> 照抄仓库里的字面量，等于把生产的 root 口令和 cookie 加密密钥一起公开。
+> 本地开发继续用仓库里那套即可——它只绑 `127.0.0.1`，且与生产无关。
 
 > **`DB_PASSWORD` 一旦首次初始化就固定了。** MySQL 官方入口脚本只在数据目录为空时
 > 执行 `ALTER USER 'root'@'localhost' IDENTIFIED BY ...`；本项目的 `code/mysql/` 是
@@ -162,8 +178,23 @@ chmod 600 /opt/company220629/.env
 > ```
 >
 > 部署脚本已经加了前置校验：`.env` 里 `APP_KEY` 或 `DB_PASSWORD` 缺失或为空时直接
-> 报错退出。这一步是必要的——`DB_PASSWORD` 为空时 compose 会代入空串，MySQL 会以
-> **无口令的 root** 初始化，而应用照样连得上，属于静默故障。
+> 报错退出。这一步是必要的——`DB_PASSWORD` 为空时 compose 会代入**空串**，而
+> `mysql:8.0` 的入口脚本把「`MYSQL_ROOT_PASSWORD` 已设置但为空」与「未设置」同样处理
+> （`[ -z "$MYSQL_ROOT_PASSWORD" ]` 对空串成立），于是打印
+> `Database is uninitialized and password option is not specified` 并**退出 1**。
+> 结果是 mysql 容器反复重启，`depends_on: condition: service_healthy` 让 project 容器
+> 永远起不来，表现为**整站起不来**，不是「静默起了个无口令的库」。
+> （已在 `mysql:8.0` 上实测：`docker run --rm -e MYSQL_ROOT_PASSWORD= mysql:8.0`
+> 直接报上述错误退出，不会进入 `ready for connections`。）
+
+```bash
+# 与部署脚本同款前置校验：首次 up 会把 root 口令永久写进数据目录，不能带着空的或格式错的
+# APP_KEY / DB_PASSWORD 起
+grep -qE '^APP_KEY=base64:[A-Za-z0-9+/]{43}=$' /opt/company220629/.env \
+  || { echo "ERROR: APP_KEY 缺失或格式非法"; exit 1; }
+grep -qE '^DB_PASSWORD=.+' /opt/company220629/.env \
+  || { echo "ERROR: DB_PASSWORD 缺失或为空"; exit 1; }
+```
 
 首次启动（第一次会自动导入 `docker/mysql/01-company220629.sql`，耗时 1-2 分钟）：
 
@@ -173,6 +204,10 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 docker-compose ps
 curl -I http://127.0.0.1:8089
 ```
+
+> 首次启动时 project 容器要等 mysql 通过健康检查（`start_period` 最长 60s）才会启动，
+> 紧接着还要等 FPM 就绪。刚 `up -d` 完立刻 curl 可能拿到 502——先用
+> `docker-compose ps` 确认 project 是 `Up` 再 curl，不要把这个 502 当成配置错误。
 
 预期：三个容器都是 `Up`，curl 返回 `HTTP/1.1 200 OK`。
 
@@ -201,6 +236,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
         client_max_body_size 20M;
     }
 }

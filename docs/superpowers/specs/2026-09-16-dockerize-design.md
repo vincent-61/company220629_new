@@ -85,7 +85,7 @@ company220629_new/
 不冲突的资源：容器名（`company220629-*` vs `realchip-*`）、网络（`company220629-network` vs
 `realchip-network`）、卷（compose 按目录名加前缀）。
 
-宿主机 Nginx 新增一个 server 块（`www.company220629.com` → `127.0.0.1:8089`），与 realchip 的
+宿主机 Nginx 新增一个 server 块（`www.yunqingelec.com` → `127.0.0.1:8089`），与 realchip 的
 server 块并存。
 
 ## 数据库配置
@@ -149,7 +149,7 @@ TTL 分两档：
 ## 生产环境差异（docker-compose.prod.yml）
 
 - `APP_ENV=production`、`APP_DEBUG=false`
-- `APP_URL=https://www.company220629.com`
+- `APP_URL=https://www.yunqingelec.com`
 - `APP_KEY`、`DB_PASSWORD` 从服务器 `.env` 注入
 - mysql、redis 用 `ports: !reset []` 移除端口（完全不暴露）
   > 原写的是 `ports: []`，**那是错的**：compose 对 `ports` 按列表合并，空列表不移除任何东西，
@@ -182,7 +182,7 @@ TTL 分两档：
 - MySQL 8.0，不是 PostgreSQL
 - 表前缀 `app_`
 - CentOS 7.6：cgroup v1、yum 包管理、firewalld
-- 域名 `www.company220629.com`，服务器 `39.108.218.82`，部署路径 `/opt/company220629`
+- 域名 `www.yunqingelec.com`，服务器 `39.108.218.82`，部署路径 `/opt/company220629`
 - 与 realchip 同机部署，端口不得冲突
 
 ## 实施期修订

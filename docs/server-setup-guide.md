@@ -1,7 +1,7 @@
 # 服务器部署指南
 
 服务器：`39.108.218.82`（CentOS 7.6）
-域名：`www.company220629.com`
+域名：`www.yunqingelec.com`
 部署路径：`/opt/company220629`
 
 > 本服务器上同时运行 realchip 项目（占用 8088/3306/6379）。本项目使用
@@ -240,7 +240,7 @@ realchip 已经占用了宿主 Nginx 的 80/443，本项目新增一个 server �
 cat > /etc/nginx/conf.d/company220629.conf <<'EOF'
 server {
     listen 80;
-    server_name www.company220629.com company220629.com;
+    server_name www.yunqingelec.com yunqingelec.com;
 
     location / {
         proxy_pass http://127.0.0.1:8089;
@@ -280,7 +280,7 @@ nginx -t && systemctl reload nginx
 
 ```bash
 yum install -y certbot python2-certbot-nginx
-certbot --nginx -d www.company220629.com -d company220629.com
+certbot --nginx -d www.yunqingelec.com -d yunqingelec.com
 ```
 
 certbot 会自动改写上面的 server 块并加上 443。验证自动续期：

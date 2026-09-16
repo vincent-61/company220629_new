@@ -12,7 +12,7 @@ services:
     environment:
       - APP_ENV=production
       - APP_DEBUG=false
-      - APP_URL=https://www.company220629.com
+      - APP_URL=https://www.yunqingelec.com
       - APP_KEY=${APP_KEY}
       - DB_PASSWORD=${DB_PASSWORD}
       - LOG_LEVEL=error

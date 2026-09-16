@@ -43,7 +43,7 @@ class Captcha
      */
     public static function issue(int $ttl = self::TTL_ADMIN): string
     {
-        $token = md5(uniqid((string) mt_rand(), true));
+        $token = bin2hex(random_bytes(16));
         Redis::setex(self::KEY_PREFIX . $token, $ttl, self::generateCode());
         return $token;
     }
@@ -60,14 +60,15 @@ class Captcha
      */
     public static function verify(?string $token, ?string $input): bool
     {
-        if (empty($token) || empty($input)) {
+        if (empty($token)) {
             return false;
         }
 
+        // 先取后删：只要 token 非空就销毁，即使本次提交的验证码为空
         $code = Redis::get(self::KEY_PREFIX . $token);
         Redis::del(self::KEY_PREFIX . $token);
 
-        if (empty($code)) {
+        if (empty($code) || empty($input)) {
             return false;
         }
 
@@ -104,14 +105,14 @@ class Captcha
 
         // 干扰线
         for ($i = 0; $i < 6; $i++) {
-            $c = (int) imagecolorallocate($img, rand(120, 200), rand(120, 200), rand(120, 200));
-            imageline($img, rand(0, $width), rand(0, $height), rand(0, $width), rand(0, $height), $c);
+            $c = (int) imagecolorallocate($img, random_int(120, 200), random_int(120, 200), random_int(120, 200));
+            imageline($img, random_int(0, $width), random_int(0, $height), random_int(0, $width), random_int(0, $height), $c);
         }
 
         // 噪点
         for ($i = 0; $i < 100; $i++) {
-            $c = (int) imagecolorallocate($img, rand(100, 200), rand(100, 200), rand(100, 200));
-            imagesetpixel($img, rand(0, $width), rand(0, $height), $c);
+            $c = (int) imagecolorallocate($img, random_int(100, 200), random_int(100, 200), random_int(100, 200));
+            imagesetpixel($img, random_int(0, $width), random_int(0, $height), $c);
         }
 
         // 字符
@@ -120,8 +121,8 @@ class Captcha
         $length = strlen($code);
         for ($i = 0; $i < $length; $i++) {
             $x = 10 + $i * 26;
-            $y = rand(22, 30);
-            $angle = rand(-15, 15);
+            $y = random_int(22, 30);
+            $angle = random_int(-15, 15);
             if ($font !== null) {
                 imagettftext($img, 20, $angle, $x, $y, $textColor, $font, $code[$i]);
             } else {
@@ -130,9 +131,13 @@ class Captcha
         }
 
         ob_start();
-        imagepng($img);
-        $binary = ob_get_clean();
-        imagedestroy($img);
+        try {
+            imagepng($img);
+        } finally {
+            // 无论 imagepng 是否抛异常都回收输出缓冲，否则缓冲区会泄漏到本次请求结束
+            $binary = ob_get_clean();
+            imagedestroy($img);
+        }
 
         return $binary === false ? null : $binary;
     }
@@ -150,7 +155,7 @@ class Captcha
         $max = strlen($charset) - 1;
         $code = '';
         for ($i = 0; $i < self::LENGTH; $i++) {
-            $code .= $charset[rand(0, $max)];
+            $code .= $charset[random_int(0, $max)];
         }
         return $code;
     }

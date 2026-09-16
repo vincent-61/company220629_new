@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-16-dockerize-design.md`
 
-> 实现期间对 spec 正文的修订（含 Redis 键前缀、`!reset`、限流与转发头）见 spec 末尾的「实施期修订」一节；与 spec 正文冲突时以该节为准。
+> 实现期间对 spec 正文的修订见 spec 末尾的「实施期修订」一节（含 Redis 键前缀、`!reset`、限流、转发头、入口脚本与上传路径）；该节末尾另有一份**历史文本清单**，列出 spec 与 plan 正文中未随修订更新的行号。凡与本指针、修订表或清单冲突的正文，一律以修订侧为准。
 
 ## Global Constraints
 

@@ -209,3 +209,25 @@ TTL 分两档：
 - `VerifyCsrfToken::$except = ['login/*']` 匹配不到 `admin/login/checkLogin`：Laravel 的
   `inExceptArray()` 按整条路径匹配，路由挪到 `admin/` 前缀下之后这条豁免就已失效。
   后果是 CSRF 反而**更严**（该接口现在真的校验 token），不是漏洞。两个表单的 blade 都显式携带 CSRF token（`{{ csrf_token() }}`：后台是 `data` 里拼 `&_token=`，前台是拼在 URL 查询串上），浏览器路径正常。留着不动，仅记录，避免下次有人以为它还在生效。
+- compose 里的 `APP_TIMEZONE=PRC` **不生效**：`code/project/config/app.php:70` 把 `'timezone'` 硬编码为 `'PRC'`，全仓库没有任何 PHP 代码读取 `APP_TIMEZONE`（`git grep APP_TIMEZONE` 只命中 `.env.example:33` 与 `docker-compose.yml:16`）。改这个环境变量不会改变时区；真正生效的是 `php.ini` 的 `date.timezone`。保留该变量只是为了与 `.env.example` 保持一致。
+
+### 未随修订更新的历史文本（spec 正文与 plan 正文）
+
+本节是**穷尽清单**：以下行号里的正文未随修订更新，属历史文本，不改写。凡与本节、修订表或
+plan 头部指针冲突的，一律以修订侧为准。清单按事实分组，行号按本次盘点时的实际位置。
+
+- **入口脚本 `-D`**：`spec:55`、`plan:428`（可直接复制的 `php-fpm -D` 代码块，照抄会复现 FPM
+  日志丢失）、`plan:1964` —— 一律以 `tasks/todo.md:34` 与 `code/project/docker-entrypoint.sh` 为准。
+- **Redis 键前缀**：`plan:24`（Global Constraints）、`plan:1743`、`plan:1858` —— 以修订表第 2 条为准
+  （`spec:135` 已由第 2 条覆盖，一并注明）。
+- **「volume 挂载」措辞**：`spec:31`、`plan:1825`（MySQL 数据目录那处，与已更正的 `CLAUDE.md:30`
+  同源）、`spec:56`、`plan:488` —— 实为宿主目录 bind mount（`docker-compose.yml:34/35/54` 三处都是
+  `./宿主目录:容器路径`），以 `docker-compose.yml` 与修订表第 11 条为准。
+- **MySQL 诊断命令的口令写法**：`plan:1742`（`mysql -uroot -p` 交互式提示，非交互环境直接失败）
+  —— 以 `docs/server-setup-guide.md:261` 的 `sh -c '… -p"$MYSQL_ROOT_PASSWORD" …'` 为准。
+- **验证码刷新的失败路径（429）**：`plan:1204`、`plan:1431`（两个可直接复制的 `refreshCaptcha()`
+  代码块，无 `.fail`，照抄会复现「点验证码没反应」）—— 以修订表第 9 条与两个 blade 为准。
+- **`!reset` / 生产覆盖层清端口**：`plan:629-630`（注释里的错误理由）、`plan:642`、`plan:645`
+  （`docker-compose.prod.yml` 代码块里的 `ports: []`，照抄**不会**移除端口，会复现第 1 条要修的
+  那个暴露问题）—— 以修订表第 1 条与 `docker-compose.prod.yml` 为准。
+- **上传路径**：`spec:167`、`plan:1674`、`plan:1678`、`plan:1904` —— 已由第 11 条覆盖，此处只做索引。

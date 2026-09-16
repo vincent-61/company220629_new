@@ -30,7 +30,7 @@
 | `docker-compose.prod.yml` | 生产覆盖层，用 `ports: !reset []` 清掉 mysql/redis 端口 |
 | `code/project/Dockerfile` | PHP 8.1-fpm + nginx 单容器，构建期 `storage:link` |
 | `code/project/nginx.conf` | 站点配置，root 指向 `public` |
-| `code/project/php.ini` | `date.timezone = Asia/Shanghai`、上传/内存等参数（时区也可由 `APP_TIMEZONE=PRC` 覆盖） |
+| `code/project/php.ini` | `date.timezone = Asia/Shanghai`、上传/内存等参数 |
 | `code/project/docker-entrypoint.sh` | `php-fpm &` 后 `exec nginx -g 'daemon off;'`（**刻意不用 `-D`**：`-D` 会强制 daemonize，使 `docker.conf` 里的 `error_log`/`access_log` 指向 `/dev/null`，FPM 日志全部丢失） |
 | `code/project/.dockerignore` | 排除 `vendor`、`.user.ini`（其 `open_basedir` 指向不存在的路径） |
 | `.github/workflows/deploy.yml` | 推送 main 自动部署 |

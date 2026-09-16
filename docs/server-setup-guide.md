@@ -189,11 +189,15 @@ chmod 600 /opt/company220629/.env
 
 ```bash
 # 与部署脚本同款前置校验：首次 up 会把 root 口令永久写进数据目录，不能带着空的或格式错的
-# APP_KEY / DB_PASSWORD 起
+# APP_KEY / DB_PASSWORD 起。
+# 这里刻意不用 `exit 1`——这段是直接粘进你的 SSH 会话里执行的，`exit` 会把你自己
+# 的登录 shell 一起关掉。改为把结论打印出来，由你决定是否继续。
+ok=1
 grep -qE '^APP_KEY=base64:[A-Za-z0-9+/]{43}=$' /opt/company220629/.env \
-  || { echo "ERROR: APP_KEY 缺失或格式非法"; exit 1; }
+  || { echo "ERROR: APP_KEY 缺失或格式非法"; ok=0; }
 grep -qE '^DB_PASSWORD=.+' /opt/company220629/.env \
-  || { echo "ERROR: DB_PASSWORD 缺失或为空"; exit 1; }
+  || { echo "ERROR: DB_PASSWORD 缺失或为空"; ok=0; }
+[ "$ok" = 1 ] && echo "校验通过，可以执行下面的 up" || echo ">>> 校验未通过，不要执行下面的 up <<<"
 ```
 
 首次启动（第一次会自动导入 `docker/mysql/01-company220629.sql`，耗时 1-2 分钟）：

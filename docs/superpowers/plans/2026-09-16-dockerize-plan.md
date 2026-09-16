@@ -11,6 +11,7 @@
 **Spec:** `docs/superpowers/specs/2026-09-16-dockerize-design.md`
 
 > 实现期间对 spec 正文的修订见 spec 末尾的「实施期修订」一节（含 Redis 键前缀、`!reset`、限流、转发头、入口脚本与上传路径）；该节末尾另有一份**历史文本清单**，列出 spec 与 plan 正文中未随修订更新的行号。凡与本指针、修订表或清单冲突的正文，一律以修订侧为准。
+> **执行本计划的任何代码块前先看上面那份清单**，特别是不要照抄这几处：`plan:429`（`php-fpm -D`）、`plan:630-631` / `plan:643` / `plan:646`（`ports: []`，照抄会重现端口暴露）、`plan:1205` / `plan:1432`（无 `.fail` 的 `refreshCaptcha()`）、`plan:1679`（rsync 本地路径）、`plan:1744`（`KEYS 'captcha:*'`，永远空集）。
 
 ## Global Constraints
 

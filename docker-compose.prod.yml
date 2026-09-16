@@ -16,8 +16,16 @@ services:
       - APP_KEY=${APP_KEY}
       - DB_PASSWORD=${DB_PASSWORD}
       - LOG_LEVEL=error
+      - LOG_CHANNEL=daily
 
   mysql:
+    # 生产环境的 root 口令必须与 APP 的 DB_PASSWORD 同源，否则改了口令只会让
+    # 应用侧 1045 认证失败，而 mysql 容器依旧 healthy。
+    # 注意：mysql:8.0 入口脚本只在「数据目录为空」的初始化路径里执行
+    # ALTER USER 'root'@'localhost' IDENTIFIED BY ...；本项目把 code/mysql 绑定挂载为
+    # 数据目录，因此口令在首次初始化时就被固定，之后重启无法追认。
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     ports: !reset []
 
   redis:

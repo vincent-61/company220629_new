@@ -1,0 +1,80 @@
+services:
+  project:
+    build:
+      context: ./code/project
+      dockerfile: Dockerfile
+    container_name: company220629-project
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PROJECT_HOST_PORT:-8089}:80"
+    environment:
+      - APP_NAME=官网管理系统
+      - APP_ENV=local
+      - APP_KEY=base64:37EEUd3g7goqcBVM+gL3nKSusFmA3oBcH50pNXc0Wbw=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8089
+      - APP_TIMEZONE=PRC
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=company220629
+      - DB_USERNAME=root
+      - DB_PASSWORD=root_company220629_202609
+      - DB_PREFIX=app_
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=null
+      - REDIS_PORT=6379
+      - REDIS_PREFIX=company_
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=sync
+      - LOG_CHANNEL=stack
+      - LOG_LEVEL=debug
+    volumes:
+      - ./code/project/storage:/var/www/html/storage
+      - ./code/project/public/upload:/var/www/html/public/upload
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - company220629-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: company220629-mysql
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-13306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_company220629_202609
+      MYSQL_DATABASE: company220629
+    volumes:
+      - ./code/mysql:/var/lib/mysql
+      - ./docker/mysql:/docker-entrypoint-initdb.d:ro
+    networks:
+      - company220629-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: company220629-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - company220629-network
+
+networks:
+  company220629-network:
+    driver: bridge
+
+volumes:
+  redis_data:

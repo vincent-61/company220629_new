@@ -35,6 +35,9 @@ RUN pecl install redis \
 # 配置 PHP
 COPY php.ini /usr/local/etc/php/php.ini
 
+# 配置 PHP-FPM 池（上游默认 max_children = 5 且不回收 worker）
+COPY php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
+
 # 配置 Nginx
 COPY nginx.conf /etc/nginx/sites-available/default
 RUN rm -f /etc/nginx/sites-enabled/default && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default

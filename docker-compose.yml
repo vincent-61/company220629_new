@@ -64,6 +64,10 @@ services:
 
   redis:
     image: redis:7-alpine
+    # 无上限时 Redis 会一直吃内存直到被 OOM killer 杀掉。allkeys-lru 在压力下淘汰最久未用
+    # 的键；代价是极端情况下会淘汰 session（用户被登出），这仍好过整个实例被杀死。
+    # 数值按同机双项目保守取值，可按服务器内存上调。
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     container_name: company220629-redis
     restart: unless-stopped
     ports:

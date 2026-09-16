@@ -1,0 +1,28 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/company220629
+            git pull origin main
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            docker image prune -f
+
+# 服务器是 CentOS 7.6，用的是 standalone `docker-compose` 二进制，不是 `docker compose` 插件，此处命令不可替换。
+# 需要在 GitHub 仓库 Settings → Secrets 里配置三个 secret：`SSH_HOST`（39.108.218.82）、`SSH_USER`（如 `root`）、`SSH_PRIVATE_KEY`。

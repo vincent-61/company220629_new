@@ -39,6 +39,11 @@ COPY php.ini /usr/local/etc/php/php.ini
 COPY nginx.conf /etc/nginx/sites-available/default
 RUN rm -f /etc/nginx/sites-enabled/default && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
+# Nginx 日志接入容器 stdio：Debian 包默认写 /var/log/nginx/*.log 实体文件，
+# 与官方 nginx 镜像一致改为软链，使 access/error log 出现在 docker logs
+RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log
+
 # 安装 Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -67,6 +72,9 @@ RUN php artisan storage:link --force
 
 # 暴露端口
 EXPOSE 80
+
+# nginx 是 PID 1，SIGTERM 是 fast shutdown 会切断进行中的请求；SIGQUIT 才是 graceful shutdown
+STOPSIGNAL SIGQUIT
 
 # 启动脚本
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

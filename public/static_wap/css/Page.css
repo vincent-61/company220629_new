@@ -1,0 +1,87 @@
+.PageSelect:hover {
+	background: #0d77e5;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	border: 1px solid #0d77e5;
+	color: White;
+}
+.PageSelect {
+	text-decoration: none;
+	cursor: pointer;
+	background: #fff;
+	border-radius: 4px;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	line-height: 32px;
+	font-size: 12px;
+	width: 22px;
+	height: 32px;
+	float: left;
+	text-align: center;
+	margin-left: 9px;
+	border: 1px solid #DDDDDD;
+	color: #0d77e5;
+}
+.CantPage {
+	text-decoration: none;
+	cursor: pointer;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	background: #efefef;
+	border-color: #efefef;
+	color: #ccc;
+	float: left;
+	width: 42px;
+	height: 32px;
+	text-align: center;
+	line-height: 32px;
+	font-size: 12px;
+	margin-left: 9px;
+	border-radius: 4px;
+}
+.PageCantSelect {
+	border-radius: 4px;
+	background-color: #0d77e5;
+	line-height: 32px;
+	font-size: 12px;
+	width: 22px;
+	height: 32px;
+	float: left;
+	text-align: center;
+	margin-left: 9px;
+	color: White;
+}
+.CanPage {
+	text-decoration: none;
+	cursor: pointer;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	background: #fff;
+	border: 1px solid #0d77e5;
+	color: #0d77e5;
+	float: left;
+	width: 42px;
+	height: 32px;
+	text-align: center;
+	line-height: 32px;
+	font-size: 12px;
+	margin-left: 9px;
+	border-radius: 4px;
+}
+.CanPage:hover {
+	background: #0d77e5;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	border: 1px solid #0d77e5;
+	color: white;
+}

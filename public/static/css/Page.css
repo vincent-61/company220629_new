@@ -1,0 +1,130 @@
+.PageSelect:hover {
+	background: #007bdf;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	border: 1px solid #007bdf;
+	color: White;
+}
+.PageSelect {
+	text-decoration: none;
+	cursor: pointer;
+	background: #fff;
+	border-radius: 4px;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	line-height: 32px;
+	font-size: 12px;
+	width: 32px;
+	height: 32px;
+	float: left;
+	text-align: center;
+	margin-left: 9px;
+	border: 1px solid #DDDDDD;
+	color: #007bdf;
+}
+.CantPage {
+	background: #efefef;
+	border-color: #efefef;
+	color: #ccc;
+	float: left;
+	width: 68px;
+	height: 32px;
+	text-align: center;
+	line-height: 32px;
+	font-size: 12px;
+	margin-left: 9px;
+}
+.PageCantSelect {
+	border-radius: 4px;
+	background-color: #007bdf;
+	line-height: 32px;
+	font-size: 12px;
+	width: 32px;
+	height: 32px;
+	float: left;
+	text-align: center;
+	margin-left: 9px;
+	color: White;
+}
+.CanPage {
+	text-decoration: none;
+	cursor: pointer;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	background: #fff;
+	border: 1px solid #007bdf;
+	color: #007bdf;
+	float: left;
+	width: 68px;
+	height: 32px;
+	text-align: center;
+	line-height: 32px;
+	font-size: 12px;
+	margin-left: 9px;
+	border-radius: 4px;
+}
+.CanPage:hover {
+	background: #007bdf;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	border: 1px solid #007bdf;
+	color: white;
+}
+.GoClass {
+	text-decoration: none;
+	cursor: pointer;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	background: #fff;
+	border: 1px solid #007bdf;
+	color: #007bdf;
+	float: left;
+	width: 40px;
+	height: 26px;
+	text-align: center;
+	line-height: 26px;
+	font-size: 14px;
+	margin-left: 9px;
+	border-radius: 4px;
+}
+.GoClass:hover {
+	background: #007bdf;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	border: 1px solid #007bdf;
+	color: White;
+}
+.PageInput {
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	width: 66px;
+	border: 1px solid #DDDDDD;
+	height: 26px;
+	line-height: 26px;
+	text-align: center;
+}
+.PageInput:focus {
+	width: 66px;
+	border: 1px solid #007bdf;
+	height: 26px;
+	line-height: 26px;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-ms-transition: all .3s;
+	-o-transition: all .3s;
+	background-color: #E9FBFE;
+}
